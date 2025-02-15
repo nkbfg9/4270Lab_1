@@ -63,8 +63,7 @@ uint32_t mem_read_32(uint32_t address)
 /***************************************************************/
 /* Write a 32-bit word to memory                                                                                */
 /***************************************************************/
-void mem_write_32(uint32_t address, uint32_t value)
-{
+void mem_write_32(uint32_t address, uint32_t value){
 	int i;
 	uint32_t offset;
 	for (i = 0; i < NUM_MEM_REGION; i++) {
@@ -345,8 +344,8 @@ void R_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32_t
 					NEXT_STATE.REGS[rd] = NEXT_STATE.REGS[rs1] >> NEXT_STATE.REGS[rs2];
 					break;
 				case 32:	//sra
-					uint8_t msb = NEXT_STATE.REGS[rs1] >> 31 & 0b1;
-					if(msb){
+					//uint8_t msb = NEXT_STATE.REGS[rs1] >> 31 & 0b1;
+					if(NEXT_STATE.REGS[rs1] >> 31 & 0b1){
 						for(int i = 0; i < NEXT_STATE.REGS[rs2]; i++) {
 							NEXT_STATE.REGS[rd] = NEXT_STATE.REGS[rs1] >> 1 | 1 << 31;
 						}
@@ -498,11 +497,80 @@ void print_number_as_binary(unsigned int n) {
 /************************************************************/
 void handle_instruction()
 {
-	/*IMPLEMENT THIS*/
-	/* execute one instruction at a time. Use/update CURRENT_STATE and and NEXT_STATE, as necessary.*/
+	
+	printf("instruction #%d: " , INSTRUCTION_COUNT);
+	NEXT_STATE.PC += 4 ;//good here with no branching instructions
+	if(INSTRUCTION_COUNT>= PROGRAM_SIZE-1){
+		RUN_FLAG = FALSE;
+	}
+	
+
+	uint32_t bincmd = mem_read_32(CURRENT_STATE.PC);//instruction and its opcode
+	OPCODE current_type;
+	current_type.type = get_opcode_type(bincmd);
+	current_type.code = bincmd & BIT_MASK_7;
+
+
+	uint8_t rd;
+	uint8_t funct3;
+	uint8_t rs1;
+	uint8_t rs2;
+	uint8_t funct7;
+	uint8_t imm4;
+	uint8_t imm11;
+	uint8_t imm;
+
 	
 
 
+	switch(current_type.type){
+		case R:
+			rd =  bincmd >> 7 & BIT_MASK_5;
+			funct3 = bincmd >> 12 & BIT_MASK_3;
+			rs1 = bincmd >> 15 & BIT_MASK_5;
+			rs2 = bincmd >> 20 & BIT_MASK_5;
+			funct7 = bincmd >> 25 & BIT_MASK_7;
+			handle_r_print(bincmd);
+			printf("\n");
+			R_Processing( rd, funct3, rs1, rs2, funct7);
+			print("register #%d before: %d\nand after: %d\n\n",rd,CURRENT_STATE.REGS[rd],NEXT_STATE.REGS[rd]);
+			break;
+		case I:
+			rd = bincmd >> 7 & BIT_MASK_5;
+			funct3 = bincmd >> 12 & BIT_MASK_3;
+			rs1 = bincmd >> 15 & BIT_MASK_5;
+			imm = bincmd >> 20 & (BIT_MASK_12);
+			handle_i_print(bincmd);
+			printf("\n");
+			if(current_type.code == 0b0000011){ ILoad_Processing(rd, funct3 ,rs1 ,imm); }
+			else{ Iimm_Processing(rd, funct3 ,rs1 ,imm); }
+			
+			break;
+
+		case S:
+			imm4 = bincmd >> 7 & BIT_MASK_5;
+			funct3 = bincmd >> 12 & BIT_MASK_3;
+			rs1 = bincmd >> 15 & BIT_MASK_5;
+			rs2 = bincmd >> 20 & BIT_MASK_5;
+			imm11 = bincmd >> 25 & BIT_MASK_7;
+			imm = (imm11 | imm4);
+			handle_s_print(bincmd);
+			printf("\n");
+			S_Processing(imm4, funct3, rs1, rs2, imm11);
+			break;
+		case B:
+		case U:
+		case J:
+		default:
+			printf("These types of instructions are not implemented\n");
+	}
+
+	
+	
+
+	
+
+}
 /************************************************************/
 /* Initialize Memory                                                                                                    */ 
 /************************************************************/
@@ -518,11 +586,35 @@ void initialize() {
 /* Print the program loaded into memory (in RISCV assembly format)    */ 
 /************************************************************/
 void print_program(){
-	/*IMPLEMENT THIS*/
-	/* execute one instruction at a time. Use/update CURRENT_STATE and and NEXT_STATE, as necessary.*/
-    
-    
-	
+	uint32_t instr_address = MEM_TEXT_BEGIN;
+	uint32_t bincmd;
+	OPCODE current_type;
+
+	for(uint32_t i=0; i < PROGRAM_SIZE; i++){
+		bincmd = mem_read_32(instr_address+(i*4));
+		current_type.type = get_opcode_type(bincmd);
+		switch(current_type.type){
+			case R:
+				handle_r_print(bincmd);
+				printf("\n");
+				break;
+			case I:
+				handle_i_print(bincmd);
+				printf("\n");
+				break;
+
+			case S:
+				handle_s_print(bincmd);
+				printf("\n");
+				break;
+			case B:
+			case U:
+			case J:
+			default:
+				printf("These types of instructions are not implemented\n");
+		}
+	}
+}
 
 /************************************************************/
 /* Print the instruction at given memory address (in RISCV assembly format)    */
@@ -652,8 +744,8 @@ void handle_i_print(uint32_t bincmd) {
 					print_i_type1_cmd("xori", rd, rs1, imm);
 					break;
 				case 0x5:
-					uint8_t imm5 = imm >> 5;
-					switch(imm5){
+					//uint8_t imm5 = imm >> 5;
+					switch(imm >> 5){
 						case 0:
 							print_i_type1_cmd("srli", rd, rs1, imm);
 							break;
@@ -661,7 +753,7 @@ void handle_i_print(uint32_t bincmd) {
 							print_i_type1_cmd("srai", rd, rs1, imm);
 							break;
 						default:
-							printf("Invalid imm[11:5](%d) for I-Type opcode(%d) funct3(%d)", imm5, opcode, funct3);
+							printf("Invalid imm[11:5](%d) for I-Type opcode(%d) funct3(%d)", (imm >> 5), opcode, funct3);
 							break;
 					}
 					break;

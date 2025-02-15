@@ -498,7 +498,7 @@ void print_number_as_binary(unsigned int n) {
 void handle_instruction()
 {
 	
-	printf("instruction #%d: " , INSTRUCTION_COUNT);
+	//printf("instruction #%d: " , INSTRUCTION_COUNT);
 	NEXT_STATE.PC += 4 ;//good here with no branching instructions
 	if(INSTRUCTION_COUNT>= PROGRAM_SIZE-1){
 		RUN_FLAG = FALSE;
@@ -533,7 +533,7 @@ void handle_instruction()
 			handle_r_print(bincmd);
 			printf("\n");
 			R_Processing( rd, funct3, rs1, rs2, funct7);
-			print("register #%d before: %d\nand after: %d\n\n",rd,CURRENT_STATE.REGS[rd],NEXT_STATE.REGS[rd]);
+			//print("register #%d before: %d\nand after: %d\n\n",rd,CURRENT_STATE.REGS[rd],NEXT_STATE.REGS[rd]);
 			break;
 		case I:
 			rd = bincmd >> 7 & BIT_MASK_5;
@@ -544,7 +544,7 @@ void handle_instruction()
 			printf("\n");
 			if(current_type.code == 0b0000011){ ILoad_Processing(rd, funct3 ,rs1 ,imm); }
 			else{ Iimm_Processing(rd, funct3 ,rs1 ,imm); }
-			
+
 			break;
 
 		case S:

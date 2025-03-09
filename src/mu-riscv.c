@@ -6,6 +6,8 @@
 
 #include "mu-riscv.h"
 
+int did_branch = 0;
+
 /***************************************************************/
 /* Print out a list of commands available                                                                  */
 /***************************************************************/
@@ -332,9 +334,9 @@ void R_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32_t
 		case 1:				//sll
 			NEXT_STATE.REGS[rd] = NEXT_STATE.REGS[rs1] << NEXT_STATE.REGS[rs2];
 			break;
-		case 2:				//slt
-			NEXT_STATE.REGS[rd] = (NEXT_STATE.REGS[rs1] < NEXT_STATE.REGS[rs2])?1:0;
-		case 3:				//sltu
+		case 2:				//slt | shouldn't we be doing something to make this signed?
+			NEXT_STATE.REGS[rd] = ((int32_t) NEXT_STATE.REGS[rs1] < (int32_t) NEXT_STATE.REGS[rs2])?1:0;
+		case 3:				//sltu 
 			NEXT_STATE.REGS[rd] = (NEXT_STATE.REGS[rs1] < NEXT_STATE.REGS[rs2])?1:0;
 		case 4:
 			NEXT_STATE.REGS[rd] = NEXT_STATE.REGS[rs1] ^ NEXT_STATE.REGS[rs2];
@@ -372,6 +374,7 @@ void R_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32_t
 }
 
 void ILoad_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm) {
+	// if imm isn't set to be padded with msb, then we will have to do that here, right?
 	switch (f3)
 	{
 	case 0: //lb
@@ -398,7 +401,7 @@ void Iimm_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm) {
 	uint32_t imm5_11 = imm >> 5;
 	switch (f3)
 	{
-	case 0: //addi
+	case 0: //addi | if imm isn't set to be padded with msb, we'll have to do that ourselves, right?
 		NEXT_STATE.REGS[rd] = NEXT_STATE.REGS[rs1] + imm;
 		break;
 
@@ -421,17 +424,17 @@ void Iimm_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm) {
 	case 5: //srli and srai
 		switch (imm5_11)
 		{
-		case 0: //srli
-			NEXT_STATE.REGS[rd] = NEXT_STATE.REGS[rs1] >> imm0_4;
-			break;
+			case 0: //srli
+				NEXT_STATE.REGS[rd] = NEXT_STATE.REGS[rs1] >> imm0_4;
+				break;
 
-		case 32: //srai
-			//NEXT_STATE.REGS[rd] = NEXT_STATE.REGS[rs1] >> imm0_4;
-			break;
-		
-		default:
-			RUN_FLAG = FALSE;
-			break;
+			case 32: //srai
+				//NEXT_STATE.REGS[rd] = NEXT_STATE.REGS[rs1] >> imm0_4;
+				break;
+			
+			default:
+				RUN_FLAG = FALSE;
+				break;
 		}
 		break;
 	
@@ -450,6 +453,7 @@ void Iimm_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm) {
 
 void S_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32_t imm11) {
 	// Recombine immediate
+	// isn't this supposed to be signed?
 	uint32_t imm = (imm11 << 5) + imm4;
 
 	switch (f3)
@@ -473,12 +477,72 @@ void S_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 	}
 }
 
-void B_Processing() {
-	// hi
+void B_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32_t imm7) {
+	// Recombine immediate
+	uint32_t imm = ((imm7 & 0b1000000) << 6) + ((imm4 & 0b00001 << 11)) + ((imm7 & 0b0111111) << 5) + (imm4 & 0b11110);
+	// this pads it with msb
+	(imm & 0x800) ? imm = (imm | 0xfffff800) : imm;
+
+	switch (f3) 
+	{
+		case 0: // beq
+			if((int32_t) NEXT_STATE.REGS[rs1] == (int32_t) NEXT_STATE.REGS[rs2]) {
+				NEXT_STATE.PC += imm;
+				did_branch = 1;
+			}
+			break;
+
+		case 1: // bne
+			if((int32_t) NEXT_STATE.REGS[rs1] != (int32_t) NEXT_STATE.REGS[rs2]) {
+				NEXT_STATE.PC += imm;
+				did_branch = 1;
+			}
+			break;
+
+		case 4: // blt
+			if((int32_t) NEXT_STATE.REGS[rs1] < (int32_t) NEXT_STATE.REGS[rs2]) {
+				NEXT_STATE.PC += imm;
+				did_branch = 1;
+			}
+			break;
+
+		case 5: // bge
+			if((int32_t) NEXT_STATE.REGS[rs1] >= (int32_t) NEXT_STATE.REGS[rs2]) {
+				NEXT_STATE.PC += imm;
+				did_branch = 1;
+			}
+			break;
+
+		case 6: // bltu
+		if(NEXT_STATE.REGS[rs1] < NEXT_STATE.REGS[rs2]) {
+				NEXT_STATE.PC += imm;
+				did_branch = 1;
+			}
+			break;
+
+		case 7: // bgeu
+		if(NEXT_STATE.REGS[rs1] >= NEXT_STATE.REGS[rs2]) {
+				NEXT_STATE.PC += imm;
+				did_branch = 1;
+			}
+			break;
+
+		default:
+			printf("Invalid instruction");
+			RUN_FLAG = FALSE;
+			break;
+	}
 }
 
-void J_Processing() {
-	// hi
+void J_Processing(uint32_t rd, uint32_t imm20) {
+	// Recombine immediate
+	uint32_t imm = (imm20 & 0x80000) + ((imm20 & 0x7fe00) >> 9) + ((imm20 & 0x100) << 2) + ((imm20 & 0xff) << 11);
+	// this pads it with msb
+	(imm & 0x80000) ? imm = (imm | 0xfff80000) : imm;
+
+	NEXT_STATE.REGS[rd] = NEXT_STATE.PC + 4;
+	NEXT_STATE.PC += imm;
+	did_branch = 1;
 }
 
 void U_Processing() {
@@ -499,7 +563,10 @@ void handle_instruction()
 {
 	
 	//printf("instruction #%d: " , INSTRUCTION_COUNT);
-	NEXT_STATE.PC += 4 ;//good here with no branching instructions
+	if(did_branch == 1) {
+		NEXT_STATE.PC += 4;
+		did_branch = 0;
+	}
 	if(INSTRUCTION_COUNT>= PROGRAM_SIZE-1){
 		RUN_FLAG = FALSE;
 	}

@@ -564,9 +564,9 @@ void handle_instruction()
 	
 	//printf("instruction #%d: " , INSTRUCTION_COUNT);
 	if(did_branch == 1) {
-		NEXT_STATE.PC += 4;
 		did_branch = 0;
 	}
+	else NEXT_STATE.PC += 4;
 	if(INSTRUCTION_COUNT>= PROGRAM_SIZE-1){
 		RUN_FLAG = FALSE;
 	}

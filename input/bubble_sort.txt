@@ -1,0 +1,40 @@
+.data
+a: .word 5,3,6,8,9,1,4,7,2,10
+
+.text
+la x8,a # x8 = a[0]
+addi x10,zero,0 # x19 <= i = 0
+addi x11,zero,10 # x11 <= n = 10
+addi x12,zero,9 # x12 <= n-1 = 9
+
+Loop1:
+bge x10,x12,exit1 # if (i >= n-1) exit outer loop
+
+addi x13,zero,0 # x13 <= j = 0
+sub x14,x12,x10 # x14 <= n - 1 - i
+
+Loop2:
+bge x13,x14,exit2 # if (j >= n - i - 1) exit inner loop
+
+slli x15,x13,2 # x15 <= j * 4
+add x15,x15,x8 # x15 <= a + j*4
+lw x16,0(x15) # x16 = a[j]
+
+addi x17,x13,1 # x17 <= j + 1
+slli x17,x17,2 # x17 <= (j + 1) * 4
+add x17,x17,x8 # x17 <= a + (j + 1) * 4
+lw x18,0(x17) # x18 = a[j+1]
+
+bge x18,x16,exit3 # if (a[j+1] >= a[j]) exit 
+swap:
+sw x18,0(x15) # a[j+1] = a[j]
+sw x16,0(x17) # a[j] = a[j+1]
+
+exit3:
+addi x13,x13,1 # i = i+1
+beq x0,x0,Loop2
+
+exit2:
+addi x10,x10,1 # i = i+1
+beq x0,x0,Loop1 
+exit1:

@@ -626,8 +626,25 @@ void handle_instruction()
 			S_Processing(imm4, funct3, rs1, rs2, imm11);
 			break;
 		case B:
+			imm4 = bincmd >> 7 & BIT_MASK_5;
+			funct3 = bincmd >> 12 & BIT_MASK_3;
+			rs1 = bincmd >> 15 & BIT_MASK_5;
+			rs2 = bincmd >> 20 & BIT_MASK_5;
+			imm11 = bincmd >> 25 & BIT_MASK_7;
+			imm = (imm11 | imm4);
+			// we're gonna have to make a command to print b commands
+			handle_s_print(bincmd);
+			printf("\n");
+			B_Processing(imm4, funct3, rs1, rs2, imm11);
+			break;
 		case U:
 		case J:
+			rd = bincmd >> 7 & BIT_MASK_5;
+			uint32_t imm20 = bincmd >> 12 & 0xffff;
+			// we're also gonna need to make a handle_j_print()
+			handle_s_print(bincmd);
+			printf("\n");
+			J_Processing(rd, imm20);
 		default:
 			printf("These types of instructions are not implemented\n");
 	}

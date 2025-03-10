@@ -49,7 +49,7 @@ int label_search(const char *label)
     return -1;
 }
 
-// return 0 upon failure, labels should never have 0 distance
+// return 0 upon failure, labels should never have 0 distance, returns label distance in bytes
 int label_distance(char *line[4], int line_index)
 {
     if (!line)
@@ -69,7 +69,7 @@ int label_distance(char *line[4], int line_index)
         snprintf(buffer, strlen(line[label_index]) + 2, "%s:", line[label_index]);
         int label_line = label_search(buffer);
 
-        return label_line - line_index;
+        return 4 * (label_line - line_index);
     }
     return 0;
 }
@@ -144,5 +144,5 @@ int main(int argc, char *argv[])
         }
         printf("\n");
     }
-    printf("%d\n", label_distance(prog_tokens[3], 3));
+    printf("%d\n", label_distance(prog_tokens[2], 2));
 }

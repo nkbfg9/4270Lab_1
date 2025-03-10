@@ -1,0 +1,12 @@
+add x10, zero, 0 # sum = 0
+add x11, zero, 0 # i = 0
+addi x12, zero, 20 # x12 = 20
+Loop:
+bge x11, x12, exit:
+sll x13, x11, 2 # i * 4
+add x13, x13, x8 # & of A + i
+lw x13, 0(x13) # *(A + i)
+add x10, x10, x13 # increment sum
+addi x11, x11, 1 # i++
+j Loop # Iterate
+exit:

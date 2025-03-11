@@ -107,7 +107,7 @@ uint32_t handle_r_type(char * tokens[]){
     //rs2
     if(strcmp(tokens[1], "zero") != 0){
         registers = char_to_int(tokens[1] + sizeof(char));
-        value += registers << 20;
+        value += registers << 7;
     }
     
 
@@ -119,7 +119,7 @@ uint32_t handle_r_type(char * tokens[]){
     }
     //rd
     registers = char_to_int(tokens[3] + sizeof(char));
-    value += registers << 7;
+    value += registers << 20;
     //funct7
     //only sub and sra != 0x00
     if( !(  strcmp("sub", tokens[0])  ) ||  !(  strcmp("sra",tokens[0]) )  ){
@@ -158,6 +158,59 @@ uint32_t handle_r_type(char * tokens[]){
 
 }
 
+
+uint32_t handle_other_i_type(char * tokens[]){
+    uint32_t value = 0;
+    uint32_t registers = 0;
+
+    //rd
+    if(strcmp(tokens[1], "zero")){
+        registers = char_to_int(tokens[1] + sizeof(char));
+        value += registers << 7;
+    }
+
+    //separating rs1 and immediate to get null terminated tokens
+    char * offset_and_register = malloc(sizeof(tokens[2]));
+    strcpy(offset_and_register, tokens[2]);
+    char * offset = NULL;
+    char * reg = NULL;
+
+    offset = strtok(offset_and_register,"()");//immediate
+    reg = strtok(NULL,"())");//rs1
+
+    
+    //rs1
+    if(strcmp(reg, "zero")){
+        registers = char_to_int(reg + sizeof(char));
+        value += registers << 15;
+    }
+
+    //immediate 
+    registers = char_to_int(offset);
+
+    value += (registers << 20);//only 12 bits so dont need to worry about overlap
+    
+
+    //no mem leak
+    free(offset_and_register);
+    offset = NULL;
+    reg = NULL;
+    offset_and_register = NULL;
+
+    //func3
+    if(strcmp(tokens[0], "lh")==0) {
+        value += 0x1000;
+    }
+    else if(strcmp(tokens[0], "lb")==0) {
+    }
+    else if(strcmp(tokens[0],"lw") ==0){
+        value += 0x2000;
+    }
+
+    return value;
+
+    
+}
 //returns uint32_t with binary for I-instructiongiven by tokens EXCLUDING OPCODE-------------------------------------------------------------------------------------------
 uint32_t handle_i_type( char * tokens[]) {
     uint32_t value = 0;
@@ -168,31 +221,33 @@ uint32_t handle_i_type( char * tokens[]) {
     if(strcmp(name, "addi")) {
 
     }
-    else if(strcmp(name, "xori")) {
+    else if(strcmp(name, "xori") ==0) {
         value += 0x4000;
     }
-    else if(strcmp(name, "ori")) {
+    else if(strcmp(name, "ori") ==0 ) {
         value += 0x6000;
     }
-    else if(strcmp(name, "andi")) {
+    else if(strcmp(name, "andi")==0) {
         value += 0x7000;
     }
-    else if(strcmp(name, "slli")) {
+    else if(strcmp(name, "slli")==0) {
         value += 0x1000;
     }
-    else if(strcmp(name, "srli")) {
+    else if(strcmp(name, "srli")==0) {
         value += 0x5000;
     }
-    else if(strcmp(name, "srai")) {
+    else if(strcmp(name, "srai")==0) {
         value += 0x5000;
         value += 0x20000000;
     }
-    else if(strcmp(name, "slti")) {
+    else if(strcmp(name, "slti")==0) {
         value += 0x2000;
     }
-    else if(strcmp(name, "sltiu")) {
+    else if(strcmp(name, "sltiu")==0) {
         value += 0x3000;
     }
+    
+    
 
     if(strcmp(rd, "zero") != 0){
         value += (char_to_int(rd + sizeof(char)) << 6);
@@ -273,7 +328,6 @@ uint32_t handle_s_type(char * tokens[]){
 
 //returns uint32_t with binary for B-instructiongiven by tokens EXCLUDING OPCODE-------------------------------------------------------------------------------------------
 uint32_t handle_b_type(char * tokens[],int i){
-    printf("GETTING B TYPE:----------------------------------------------------------------------------------------------------\n");
     uint32_t value =0;
     uint32_t registers =0;
 
@@ -331,6 +385,12 @@ uint32_t handle_b_type(char * tokens[],int i){
 
 }
 
+uint32_t handle_j_type(char * tokens[],int i){
+    uint32_t value = 0;
+
+
+    return value;
+}
 //return uint23_t containing binary for instruction given by tokens---------------------------------------------------------------------------------------
 uint32_t getOpcode( char * tokens[],int i) {
     uint32_t value = 0;
@@ -348,7 +408,7 @@ uint32_t getOpcode( char * tokens[],int i) {
         }
     else if(strcmp(name, "lb") == 0|| strcmp(name, "lh") == 0|| strcmp(name, "lw") == 0|| strcmp(name, "lbu") == 0|| strcmp(name, "lhu")== 0) {
         value += 0b0000011;
-        return value + handle_i_type(tokens);
+        return value + handle_other_i_type(tokens);
     }
     else if(strcmp(name, "sb")== 0 || strcmp(name, "sh")== 0 || strcmp(name, "sw")== 0) {
         value += 0b0100011;
@@ -360,7 +420,7 @@ uint32_t getOpcode( char * tokens[],int i) {
     }
     else if(strcmp(name, "jal")== 0) {
         value += 0b1101111;
-        return value;
+        return value + handle_j_type(tokens,i);
     }
     else if(strcmp(name, "jalr")== 0) {
         value += 0b1100111;
@@ -426,7 +486,9 @@ void write_instr(){
         exit(-1);
     }
     for(int i=0; i<num_lines;i++){
-        fprintf(fp,"%x\n",prog_instr[i]);
+        if(prog_instr[i] != 0){
+            fprintf(fp,"%08x\n",prog_instr[i]);
+        }
     }
     printf("wrote to the file\n");
     fclose(fp);
@@ -449,6 +511,7 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < num_lines; i++)
     {
+        printf("\n");
         for (int j = 0; j < 4; j++)
         {
             if (prog_tokens[i][j])
@@ -457,15 +520,17 @@ int main(int argc, char *argv[])
             }
         }
         printf("\n");
+        prog_instr[i] = getOpcode(prog_tokens[i],i);
+        printf("instruction %d: %x\n",i,prog_instr[i]);
+
     }
     //printf("%d\n", label_distance(prog_tokens[2], 2));
-    printf("going into opcode getting\n");
-    for(int i=0; i< num_lines;i++){
+    /*for(int i=0; i< num_lines;i++){
 
         prog_instr[i] = getOpcode(prog_tokens[i],i);
-        //printf("instruction %d: %u\n\n\n",i,instruction);
+        printf("instruction %d: %u\n\n\n",i,prog_instr[i]);
 
-    }
+    }*/
     strcpy(prog_file,argv[2]);
     write_instr();
 

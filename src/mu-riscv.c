@@ -888,14 +888,14 @@ void handle_b_print(uint32_t bincmd)
 	uint8_t imm11 = bincmd >> 7 & (BIT_MASK_8 >> 7);
 	uint8_t imm12 = bincmd >> 31 & (BIT_MASK_8 >> 7);
 
-	int16_t imm = 0b1111111111111111;
+	int16_t imm;
 	if (imm12 > 0) // need to sign extend for 16 bits
 	{
-		imm &= ((0b111111 << 10) | (imm11 << 9) | (imm10 << 3) | imm4);
+		imm = ((0b111111 << 11) | (imm11 << 10) | (imm10 << 4) | imm4 << 1);
 	}
 	else
 	{
-		imm &= ((imm11 << 9) | (imm10 << 3) | imm4);
+		imm = ((imm11 << 10) | (imm10 << 4) | imm4 << 1);
 	}
 
 	switch (f3)
@@ -923,6 +923,7 @@ void handle_b_print(uint32_t bincmd)
 		break;
 	}
 }
+
 void handle_j_print(uint32_t bincmd)
 {
 	uint8_t rd = bincmd >> 7 & BIT_MASK_5;
@@ -931,14 +932,15 @@ void handle_j_print(uint32_t bincmd)
 	uint8_t imm11 = bincmd >> 20 & (BIT_MASK_8 >> 7);
 	uint8_t imm20 = bincmd >> 31 & (BIT_MASK_8 >> 7);
 
-	int32_t imm = 0b11111111111111111111111111111111;
+	int32_t imm;
+
 	if (imm20 > 0) // need to sign extend for bits
 	{
-		imm &= (0b11111111111111 << 18 | imm19 << 10 | imm11 << 9 | imm10);
+		imm = (0b1111111111111 << 19 | imm19 << 11 | imm11 << 10 | imm10 << 1);
 	}
 	else
 	{
-		imm &= (imm19 << 10 | imm11 << 9 | imm10);
+		imm = (imm19 << 11 | imm11 << 10 | imm10 << 1);
 	}
 
 	print_j_cmd("jal", rd, imm);
@@ -1039,12 +1041,12 @@ void print_s_cmd(char *cmd_name, uint8_t rs2, uint8_t offset, uint8_t rs1)
 
 void print_b_cmd(char *cmd_name, uint8_t rs1, uint8_t rs2, int16_t offset)
 {
-	printf("%s x%d, x%d, %d", cmd_name, rs1, rs2, offset << 1);
+	printf("%s x%d, x%d, %d", cmd_name, rs1, rs2, offset);
 }
 
 void print_j_cmd(char *cmd_name, uint8_t rd, int32_t offset)
 {
-	printf("%s x%d, %d", cmd_name, rd, offset << 1);
+	printf("%s x%d, %d", cmd_name, rd, offset);
 }
 
 void print_i_type1_cmd(char *cmd_name, uint8_t rd, uint8_t rs1, uint16_t imm)

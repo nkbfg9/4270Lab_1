@@ -330,18 +330,15 @@ uint32_t handle_s_type(char * tokens[]){
 uint32_t handle_b_type(char * tokens[],int i){
     uint32_t value =0;
     uint32_t registers =0;
-    printf("\n\nBTYEP:       \n");
     //rs2
     if(strcmp(tokens[1], "zero")){
         registers = char_to_int(tokens[1] + sizeof(char));
-        printf("register2: %u\n",registers);
         value += registers << 20;
     }
     
     //rs1
     if(strcmp(tokens[2], "zero")){
         registers = char_to_int(tokens[2]  + sizeof(char));
-        printf("register1: %u\n",registers);
         value += registers << 15;
     }
 
@@ -360,16 +357,14 @@ uint32_t handle_b_type(char * tokens[],int i){
         registers = 6;
     else
         registers = 7;
-    printf("funct3: %u\n",registers);
     value += registers << 12;
 
+
+    //offset
     int32_t label_offset = label_distance(tokens, i);
-    printf("offset: %d\n",label_offset);
     uint32_t * unsigned_offset = (uint32_t *) &label_offset;
-    printf("binary offset: %x\n",*unsigned_offset);
     //cuts out middle 1's
     //imm[12|1-5]
-    uint32_t tempo =0;
     uint32_t mask = 0b10000000000000000000000000000000;
     value += mask & (*unsigned_offset);//sign bit good
     mask = 0b01111110000000000000000000000000;
@@ -380,21 +375,35 @@ uint32_t handle_b_type(char * tokens[],int i){
     value += mask & (*unsigned_offset << 7);//
     mask = 0b00000000000000000000000010000000;
     value += mask &(*unsigned_offset >> 4);
-    tempo += mask &(*unsigned_offset >> 4);
-    printf("tempo: %08x\n",tempo);
-    
-
-    
 
     return value;
-    
-
-
 }
 
 uint32_t handle_j_type(char * tokens[],int i){
     uint32_t value = 0;
+    uint32_t registers =0;
+    
+    //rd
+    registers = char_to_int(tokens[1] + sizeof(char));
+    value += registers << 20;
 
+
+    //offset
+    int32_t label_offset = label_distance(tokens, i);
+    uint32_t * unsigned_offset = (uint32_t *) &label_offset;
+
+    //immediate
+    uint32_t mask = 0b10000000000000000000000000000000;
+    value += mask & (*unsigned_offset);//sign bit good
+    //11 bit
+    mask = mask >> 11;
+    value += mask &(*unsigned_offset << 10);
+    //10-1
+    mask = 0b01111111111000000000000000000000;
+    value += mask &(*unsigned_offset << 20);
+    //19-12
+    mask = 0b00000000000011111111000000000000;
+    value += mask &(*unsigned_offset );
 
     return value;
 }

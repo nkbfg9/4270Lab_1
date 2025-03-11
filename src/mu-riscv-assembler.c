@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,11 +10,12 @@
 #define MAX_TOKENS 4
 char prog_file[32];
 char *prog_tokens[MAX_INSTR][MAX_TOKENS];
+uint32_t prog_instr[MAX_INSTR];
 int num_lines = 0;
 const char *delimeter = " \n,";
 char *temp;
 
-
+//covert string to lower case------------------------------------------------------------------------------------------------------------------------------
 void toLowerCase(char *str) {
     for (int i = 0; str[i]; i++) {
         if (str[i] >= 'A' && str[i] <= 'Z') {
@@ -22,73 +24,102 @@ void toLowerCase(char *str) {
     }
 }
 
-uint32_t getOpcode(char * tokens[]) {
-    uint32_t value = 0;
-    char * name = tokens[0];
-    toLowerCase(name);
-    if(strcmp(name, "add") || strcmp(name, "sub") || strcmp(name, "xor") || strcmp(name, "or") || strcmp(name, "and") || strcmp(name, "sll")
-        || strcmp(name, "srl")  || strcmp(name, "sll") || strcmp(name, "sra") || strcmp(name, "slt") || strcmp(name, "sltu")) {
-            value += 0b0110011;
-            return value;
-    }
-    else if(strcmp(name, "addi") || strcmp(name, "xori") || strcmp(name, "ori") || strcmp(name, "andi") || strcmp(name, "slli") || strcmp(name, "srli")
-        || strcmp(name, "srai") || strcmp(name, "slti") || strcmp(name, "sltiu")) {
-            value += 0b0010011;
-            return value + handle_i_type(tokens);
-        }
-    else if(strcmp(name, "lb") || strcmp(name, "lh") || strcmp(name, "lw") || strcmp(name, "lbu") || strcmp(name, "lhu")) {
-        value += 0b0000011;
-        return value;
-    }
-    else if(strcmp(name, "sb") || strcmp(name, "sh") || strcmp(name, "sw")) {
-        value += 0b0100011;
-        return value;
-    }
-    else if(strcmp(name, "beq") || strcmp(name, "bne") || strcmp(name, "blt") || strcmp(name, "bge") || strcmp(name, "bltu") || strcmp(name, "bgeu")) {
-        value += 0b1100011;
-        return value;
-    }
-    else if(strcmp(name, "jal")) {
-        value += 0b1101111;
-        return value;
-    }
-    else if(strcmp(name, "jalr")) {
-        value += 0b1100111;
-        return value;
-    }
-    else return 0;
-}
-
-//takes token and returns an integer[must be null terminating]
-uint32_t char_to_int(char * token){
+//takes token and returns an integer[must be null terminating]--------------------------------------------------------------------------------------------
+uint32_t char_to_int(const char * token){
+    
     uint32_t length = strlen(token);
     uint32_t blah =0;
     for(uint32_t i=0;i < length;i++){
-        blah += token[i] * (pow(10,length-(i+1)));//10 ^ length-i for tens positions
+        blah += (token[i] - '0') * (pow(10,length-(i+1)));//10 ^ length-i for tens positions
     }
+    //printf("token: %s\ninteger: %d\n",token,blah);
     return blah;
 }
 
+//-return -1 for failure, 1 for beq, 2 for bne, 3 for blt, 4 for bge, 5 for bltu, 6 for bgeu
+int determine_branch(char *line[4])
+{
+    if (!line || !line[3])
+    {
+        return -1;
+    }
 
+    if (strncmp("beq", line[0], strlen("beq")) == 0)
+        return 1;
+    if (strncmp("bne", line[0], strlen("bne")) == 0)
+        return 2;
+    if (strncmp("blt", line[0], strlen("blt")) == 0)
+        return 3;
+    if (strncmp("bge", line[0], strlen("bge")) == 0)
+        return 4;
+    if (strncmp("bltu", line[0], strlen("bltu")) == 0)
+        return 5;
+    if (strncmp("bgeu", line[0], strlen("bgeu")) == 0)
+        return 6;
+    return -1;
+}
+
+// return -1 for failure, index of line containing label for success
+int label_search(const char *label)
+{
+    if (!label)
+        return -1;
+
+    for (int i = 0; i < num_lines; ++i)
+    {
+        if (strncmp(prog_tokens[i][0], label, strlen(label)) == 0)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// return 0 upon failure, labels should never have 0 distance, returns label distance in bytes
+int32_t label_distance(char *line[4], int line_index)
+{
+    if (!line)
+    {
+        return 0;
+    }
+    int label_index = -1;
+    if (strncmp("jal", line[0], strlen("jal")) == 0)
+        label_index = 2;
+    if (determine_branch(line) > -1)
+        label_index = 3;
+    if (label_index == 2 || label_index == 3)
+    {
+        char buffer[50];
+        if (!line[2])
+            return 0;
+        snprintf(buffer, strlen(line[label_index]) + 2, "%s:", line[label_index]);
+        int label_line = label_search(buffer);
+
+        return 4 * (label_line - line_index);
+    }
+    return 0;
+}
+
+//returns uint32_t with binary for R-instructiongiven by tokens EXCLUDING OPCODE-------------------------------------------------------------------------------------------
 uint32_t handle_r_type(char * tokens[]){
-
     uint32_t value =0;
     uint32_t registers =0;
     //rs2
-    if(strcmp(tokens[1], "zero")){
+    if(strcmp(tokens[1], "zero") != 0){
         registers = char_to_int(tokens[1] + sizeof(char));
         value += registers << 20;
     }
     
+
+    
     //rs1
-    if(strcmp(tokens[2], "zero")){
+    if(strcmp(tokens[2], "zero")!= 0){
         registers = char_to_int(tokens[2]  + sizeof(char));
         value += registers << 15;
     }
     //rd
     registers = char_to_int(tokens[3] + sizeof(char));
     value += registers << 7;
-
     //funct7
     //only sub and sra != 0x00
     if( !(  strcmp("sub", tokens[0])  ) ||  !(  strcmp("sra",tokens[0]) )  ){
@@ -123,55 +154,62 @@ uint32_t handle_r_type(char * tokens[]){
     }
     value += registers << 12;
 
-
     return value;
 
 }
 
-uint32_t handle_i_type(char * tokens[]) {
+//returns uint32_t with binary for I-instructiongiven by tokens EXCLUDING OPCODE-------------------------------------------------------------------------------------------
+uint32_t handle_i_type( char * tokens[]) {
     uint32_t value = 0;
     char * name = tokens[0];
     char * rd = tokens[1];
     char * rs1 = tokens[2];
     char * imm = tokens[3];
-    toLowerCase(name);
     if(strcmp(name, "addi")) {
 
     }
-    if(strcmp(name, "xori")) {
+    else if(strcmp(name, "xori")) {
         value += 0x4000;
     }
-    if(strcmp(name, "ori")) {
+    else if(strcmp(name, "ori")) {
         value += 0x6000;
     }
-    if(strcmp(name, "andi")) {
+    else if(strcmp(name, "andi")) {
         value += 0x7000;
     }
-    if(strcmp(name, "slli")) {
+    else if(strcmp(name, "slli")) {
         value += 0x1000;
     }
-    if(strcmp(name, "srli")) {
+    else if(strcmp(name, "srli")) {
         value += 0x5000;
     }
-    if(strcmp(name, "srai")) {
+    else if(strcmp(name, "srai")) {
         value += 0x5000;
         value += 0x20000000;
     }
-    if(strcmp(name, "slti")) {
+    else if(strcmp(name, "slti")) {
         value += 0x2000;
     }
-    if(strcmp(name, "sltiu")) {
+    else if(strcmp(name, "sltiu")) {
         value += 0x3000;
     }
 
-    value += char_to_int(rd) << 6;
-    value += char_to_int(rs1) << 15;
+    if(strcmp(rd, "zero") != 0){
+        value += (char_to_int(rd + sizeof(char)) << 6);
+    }
+    if(strcmp(rs1, "zero") != 0){
+        value += char_to_int(rs1 + sizeof(char)) << 15;
+    }
+
+    
     value += char_to_int(imm) << 20;
     return value;
 }
 
+//returns uint32_t with binary for S-instructiongiven by tokens EXCLUDING OPCODE-------------------------------------------------------------------------------------------
 uint32_t handle_s_type(char * tokens[]){
-    uint32_t value,registers =0;
+    uint32_t value =0;
+    uint32_t registers =0;
     uint32_t immediate_mask = 0b11111110000000000000111110000000;
 
     //rs2
@@ -183,10 +221,11 @@ uint32_t handle_s_type(char * tokens[]){
     //separating rs1 and immediate to get null terminated tokens
     char * offset_and_register = malloc(sizeof(tokens[2]));
     strcpy(offset_and_register, tokens[2]);
-    char * offset, reg = NULL;
+    char * offset = NULL;
+    char * reg = NULL;
 
     offset = strtok(offset_and_register,"()");//immediate
-    reg = strtok(offset_and_register,"()");//rs1
+    reg = strtok(NULL,"())");//rs1
 
     
     //rs1
@@ -232,8 +271,11 @@ uint32_t handle_s_type(char * tokens[]){
 
 }
 
-uint32_t handle_b_type(char * tokens[]){
-    uint32_t value,registers =0;
+//returns uint32_t with binary for B-instructiongiven by tokens EXCLUDING OPCODE-------------------------------------------------------------------------------------------
+uint32_t handle_b_type(char * tokens[],int i){
+    printf("GETTING B TYPE:----------------------------------------------------------------------------------------------------\n");
+    uint32_t value =0;
+    uint32_t registers =0;
 
     //rs2
     if(strcmp(tokens[1], "zero")){
@@ -248,79 +290,93 @@ uint32_t handle_b_type(char * tokens[]){
     }
 
 
+    //funct3
+
+    if (strncmp("beq", tokens[0], strlen("beq")) == 0)
+        registers = 0;
+    else if (strncmp("bne", tokens[0], strlen("bne")) == 0)
+        registers = 1;
+    else if (strncmp("blt", tokens[0], strlen("blt")) == 0)
+        registers = 4;
+    else if (strncmp("bge", tokens[0], strlen("bge")) == 0)
+        registers = 5;
+    else if (strncmp("bltu", tokens[0], strlen("bltu")) == 0)
+        registers = 6;
+    else
+        registers = 7;
+
+    value += registers << 12;
+
+    int32_t label_offset = label_distance(tokens, i);
+    uint32_t * unsigned_offset = (uint32_t *) &label_offset;
+
+    //cuts out middle 1's
+    //imm[12|1-5]
+    uint32_t mask = 0b10000000000000000000000000000000;
+    value += mask & (*unsigned_offset);//sign bit
+    mask = 0b01111110000000000000000000000000;
+    value += mask &(*unsigned_offset << 20);
+
+    //imm[4-1|11]
+    mask = 0b00000000000000000000011110000000;
+    value += mask & (*unsigned_offset << 7);
+    mask = 0b00000000000000000000000001000000;
+    value += mask &(*unsigned_offset >> 4);
+
+    
+
+    return value;
+    
+
 
 }
 
-//-return -1 for failure, 1 for beq, 2 for bne, 3 for blt, 4 for bge, 5 for bltu, 6 for bgeu
-int determine_branch(char *line[4])
-{
-    if (!line || !line[3])
-    {
-        return -1;
+//return uint23_t containing binary for instruction given by tokens---------------------------------------------------------------------------------------
+uint32_t getOpcode( char * tokens[],int i) {
+    uint32_t value = 0;
+    char * name = tokens[0];
+    toLowerCase(name);
+    if(strcmp(name, "add") == 0|| strcmp(name, "sub") == 0|| strcmp(name, "xor")== 0 || strcmp(name, "or") == 0|| strcmp(name, "and")== 0 || strcmp(name, "sll")== 0
+        || strcmp(name, "srl")  == 0|| strcmp(name, "sll") == 0|| strcmp(name, "sra") == 0|| strcmp(name, "slt") == 0|| strcmp(name, "sltu")== 0) {
+            value += 0b0110011;
+            return value + handle_r_type(tokens);
     }
-
-    if (strncmp("beq", line[0], strlen("beq")) == 0)
-        return 1;
-    if (strncmp("bne", line[0], strlen("bne")) == 0)
-        return 2;
-    if (strncmp("blt", line[0], strlen("blt")) == 0)
-        return 3;
-    if (strncmp("bge", line[0], strlen("bge")) == 0)
-        return 4;
-    if (strncmp("bltu", line[0], strlen("bltu")) == 0)
-        return 5;
-    if (strncmp("bgeu", line[0], strlen("bgeu")) == 0)
-        return 6;
-    return -1;
-}
-
-// return -1 for failure, index of line containing label for success
-int label_search(const char *label)
-{
-    if (!label)
-        return -1;
-
-    for (int i = 0; i < num_lines; ++i)
-    {
-        if (strncmp(prog_tokens[i][0], label, strlen(label)) == 0)
-        {
-            return i;
+    else if(strcmp(name, "addi") == 0|| strcmp(name, "xori") == 0|| strcmp(name, "ori")== 0 || strcmp(name, "andi") == 0|| strcmp(name, "slli") == 0|| strcmp(name, "srli")== 0
+        || strcmp(name, "srai") == 0|| strcmp(name, "slti") == 0|| strcmp(name, "sltiu")== 0) {
+            value += 0b0010011;
+            return value + handle_i_type(tokens);
         }
+    else if(strcmp(name, "lb") == 0|| strcmp(name, "lh") == 0|| strcmp(name, "lw") == 0|| strcmp(name, "lbu") == 0|| strcmp(name, "lhu")== 0) {
+        value += 0b0000011;
+        return value + handle_i_type(tokens);
     }
-    return -1;
-}
-
-// return 0 upon failure, labels should never have 0 distance, returns label distance in bytes
-int label_distance(char *line[4], int line_index)
-{
-    if (!line)
-    {
+    else if(strcmp(name, "sb")== 0 || strcmp(name, "sh")== 0 || strcmp(name, "sw")== 0) {
+        value += 0b0100011;
+        return value + handle_s_type(tokens);
+    }
+    else if(strcmp(name, "beq") == 0|| strcmp(name, "bne") == 0|| strcmp(name, "blt") == 0|| strcmp(name, "bge") == 0|| strcmp(name, "bltu") == 0|| strcmp(name, "bgeu")== 0) {
+        value += 0b1100011;
+        return value + handle_b_type(tokens,i);
+    }
+    else if(strcmp(name, "jal")== 0) {
+        value += 0b1101111;
+        return value;
+    }
+    else if(strcmp(name, "jalr")== 0) {
+        value += 0b1100111;
+        return value + handle_i_type(tokens);
+    }
+    else{ 
         return 0;
     }
-    int label_index = -1;
-    if (strncmp("jal", line[0], strlen("jal")) == 0)
-        label_index = 2;
-    if (determine_branch(line) > -1)
-        label_index = 3;
-    if (label_index == 2 || label_index == 3)
-    {
-        char buffer[50];
-        if (!line[2])
-            return 0;
-        snprintf(buffer, strlen(line[label_index]) + 2, "%s:", line[label_index]);
-        int label_line = label_search(buffer);
-
-        return 4 * (label_line - line_index);
-    }
-    return 0;
 }
 
 void load_program()
 {
     FILE *fp;
-    char *line = NULL;
-    size_t len = 0;
-    size_t read;
+    char *line = malloc( 300 * sizeof(char));
+    //size_t len = 0;
+    //size_t read;
 
     /* Open program file. */
     fp = fopen(prog_file, "r");
@@ -331,7 +387,8 @@ void load_program()
     }
 
     /* Read in the program. */
-    while ((read = getline(&line, &len, fp)) != -1)
+    //while ((read = getline(&line, &len, fp)) != -1)
+    while(fgets(line,300,fp) != NULL)
     {
         if (strncmp(line, "\n", 2) == 0) // skip the newlines
             continue;
@@ -359,18 +416,34 @@ void load_program()
     return;
 }
 
+void write_instr(){
+    printf("writing to file\n");
+    FILE *fp;
+    fp = fopen(prog_file, "w");
+    if (fp == NULL)
+    {
+        printf("Error: Can't open program file %s\n", prog_file);
+        exit(-1);
+    }
+    for(int i=0; i<num_lines;i++){
+        fprintf(fp,"%x\n",prog_instr[i]);
+    }
+    printf("wrote to the file\n");
+    fclose(fp);
+    
+}
 int main(int argc, char *argv[])
 {
     printf("\n**************************\n");
     printf("Welcome to MU-RISCV SIM...\n");
     printf("**************************\n\n");
 
-    if (argc < 2)
+    if (argc < 3)
     {
-        printf("Error: You should provide input file.\nUsage: %s <input program> \n\n", argv[0]);
+        printf("Error: You should provide input and output file.\nUsage: %s <input program> \n\n", argv[0]);
         exit(1);
     }
-    uint32_t instruction;
+    //uint32_t instruction;
     strcpy(prog_file, argv[1]);
     load_program();
 
@@ -385,12 +458,16 @@ int main(int argc, char *argv[])
         }
         printf("\n");
     }
-    printf("%d\n", label_distance(prog_tokens[2], 2));
-
+    //printf("%d\n", label_distance(prog_tokens[2], 2));
+    printf("going into opcode getting\n");
     for(int i=0; i< num_lines;i++){
-        instruction = getOpcode(prog_tokens[i]);
+
+        prog_instr[i] = getOpcode(prog_tokens[i],i);
+        //printf("instruction %d: %u\n\n\n",i,instruction);
 
     }
+    strcpy(prog_file,argv[2]);
+    write_instr();
 
 
 

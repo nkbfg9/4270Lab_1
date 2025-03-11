@@ -212,7 +212,7 @@ uint32_t handle_other_i_type(char * tokens[]){
     
 }
 //returns uint32_t with binary for I-instructiongiven by tokens EXCLUDING OPCODE-------------------------------------------------------------------------------------------
-uint32_t handle_i_type( char * tokens[]) {
+uint32_t handle_i_type( char * tokens[]){
     uint32_t value = 0;
     char * name = tokens[0];
     char * rd = tokens[1];
@@ -222,35 +222,35 @@ uint32_t handle_i_type( char * tokens[]) {
 
     }
     else if(strcmp(name, "xori") ==0) {
-        value += 0x4000;
+        value += 4<<12;
     }
     else if(strcmp(name, "ori") ==0 ) {
-        value += 0x6000;
+        value += 6<<12;;
     }
     else if(strcmp(name, "andi")==0) {
-        value += 0x7000;
+        value += 7<<12;
     }
     else if(strcmp(name, "slli")==0) {
-        value += 0x1000;
+        value += 1<<12;
     }
     else if(strcmp(name, "srli")==0) {
-        value += 0x5000;
+        value += 5<<12;
     }
     else if(strcmp(name, "srai")==0) {
-        value += 0x5000;
-        value += 0x20000000;
+        value += 5<<12;
+        value += 32 << 20;
     }
     else if(strcmp(name, "slti")==0) {
-        value += 0x2000;
+        value += 2 << 12;
     }
     else if(strcmp(name, "sltiu")==0) {
-        value += 0x3000;
+        value += 3 << 12;
     }
     
     
 
     if(strcmp(rd, "zero") != 0){
-        value += (char_to_int(rd + sizeof(char)) << 6);
+        value += (char_to_int(rd + sizeof(char)) << 7);
     }
     if(strcmp(rs1, "zero") != 0){
         value += char_to_int(rs1 + sizeof(char)) << 15;
@@ -330,16 +330,18 @@ uint32_t handle_s_type(char * tokens[]){
 uint32_t handle_b_type(char * tokens[],int i){
     uint32_t value =0;
     uint32_t registers =0;
-
+    printf("\n\nBTYEP:       \n");
     //rs2
     if(strcmp(tokens[1], "zero")){
         registers = char_to_int(tokens[1] + sizeof(char));
+        printf("register2: %u\n",registers);
         value += registers << 20;
     }
     
     //rs1
     if(strcmp(tokens[2], "zero")){
         registers = char_to_int(tokens[2]  + sizeof(char));
+        printf("register1: %u\n",registers);
         value += registers << 15;
     }
 
@@ -358,24 +360,29 @@ uint32_t handle_b_type(char * tokens[],int i){
         registers = 6;
     else
         registers = 7;
-
+    printf("funct3: %u\n",registers);
     value += registers << 12;
 
     int32_t label_offset = label_distance(tokens, i);
+    printf("offset: %d\n",label_offset);
     uint32_t * unsigned_offset = (uint32_t *) &label_offset;
-
+    printf("binary offset: %x\n",*unsigned_offset);
     //cuts out middle 1's
     //imm[12|1-5]
+    uint32_t tempo =0;
     uint32_t mask = 0b10000000000000000000000000000000;
-    value += mask & (*unsigned_offset);//sign bit
+    value += mask & (*unsigned_offset);//sign bit good
     mask = 0b01111110000000000000000000000000;
     value += mask &(*unsigned_offset << 20);
 
     //imm[4-1|11]
-    mask = 0b00000000000000000000011110000000;
-    value += mask & (*unsigned_offset << 7);
-    mask = 0b00000000000000000000000001000000;
+    mask = 0b00000000000000000000111100000000;
+    value += mask & (*unsigned_offset << 7);//
+    mask = 0b00000000000000000000000010000000;
     value += mask &(*unsigned_offset >> 4);
+    tempo += mask &(*unsigned_offset >> 4);
+    printf("tempo: %08x\n",tempo);
+    
 
     
 
@@ -392,7 +399,7 @@ uint32_t handle_j_type(char * tokens[],int i){
     return value;
 }
 //return uint23_t containing binary for instruction given by tokens---------------------------------------------------------------------------------------
-uint32_t getOpcode( char * tokens[],int i) {
+uint32_t getOpcode( char * tokens[],int i){
     uint32_t value = 0;
     char * name = tokens[0];
     toLowerCase(name);

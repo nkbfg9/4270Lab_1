@@ -219,8 +219,8 @@ uint32_t handle_i_type( char * tokens[]){
     char * rd = tokens[1];
     char * rs1 = tokens[2];
     char * imm = tokens[3];
-    if(strcmp(name, "addi")) {
-        
+    if(strcmp(name, "addi")==0) {
+
 
     }
     else if(strcmp(name, "xori") ==0) {

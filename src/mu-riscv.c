@@ -531,9 +531,10 @@ void B_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 	uint32_t imm = ((imm7 & 0b1000000) << 6) + ((imm4 & 0b00001 << 11)) + ((imm7 & 0b0111111) << 5) + (imm4 & 0b11110);
 	// this pads it with msb
 	(imm & 0x800) ? imm = (imm | 0xfffff800) : imm;
-
+	
 	switch (f3)
 	{
+	
 	case 0: // beq
 		if ((int32_t)NEXT_STATE.REGS[rs1] == (int32_t)NEXT_STATE.REGS[rs2])
 		{
@@ -559,6 +560,7 @@ void B_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 		break;
 
 	case 5: // bge
+		printf("register values are %d >= %d\n", (int32_t) NEXT_STATE.REGS[rs1], (int32_t) NEXT_STATE.REGS[rs2]);
 		if ((int32_t)NEXT_STATE.REGS[rs1] >= (int32_t)NEXT_STATE.REGS[rs2])
 		{
 			NEXT_STATE.PC += imm;
@@ -587,6 +589,7 @@ void B_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 		RUN_FLAG = FALSE;
 		break;
 	}
+
 }
 
 void J_Processing(uint32_t rd, uint32_t imm20)

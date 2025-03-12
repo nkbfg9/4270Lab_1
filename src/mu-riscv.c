@@ -713,7 +713,7 @@ void handle_instruction()
 		J_Processing(rd, imm20);
 		break;
 	default:
-		printf("\n%u\n",current_type.code);
+		printf("\n%u\n", current_type.code);
 		printf("These types of instructions are not implemented\n");
 	}
 }
@@ -888,18 +888,18 @@ void handle_b_print(uint32_t bincmd)
 	uint8_t rs1 = bincmd >> 15 & BIT_MASK_5;
 	uint8_t rs2 = bincmd >> 20 & BIT_MASK_5;
 	uint8_t imm4 = bincmd >> 8 & (BIT_MASK_8 >> 4);
-	uint16_t imm10 = bincmd >> 24 & (BIT_MASK_8 >> 2);
+	uint16_t imm10 = bincmd >> 25 & (BIT_MASK_8 >> 2);
 	uint8_t imm11 = bincmd >> 7 & (BIT_MASK_8 >> 7);
 	uint8_t imm12 = bincmd >> 31 & (BIT_MASK_8 >> 7);
 
 	int16_t imm;
 	if (imm12 > 0) // need to sign extend for 16 bits
 	{
-		imm = ((0b111111 << 11) | (imm11 << 10) | (imm10 << 4) | imm4 << 1);
+		imm = ((0b111111 << 11) | (imm11 << 10) | (imm10 << 5) | imm4 << 1);
 	}
 	else
 	{
-		imm = ((imm11 << 10) | (imm10 << 4) | imm4 << 1);
+		imm = ((imm11 << 10) | (imm10 << 5) | imm4 << 1);
 	}
 
 	switch (f3)

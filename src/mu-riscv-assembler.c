@@ -165,7 +165,7 @@ uint32_t handle_other_i_type(char * tokens[]){
     uint32_t registers = 0;
 
     //rd
-    if(strcmp(tokens[1], "zero")){
+    if(strcmp(tokens[1], "zero") != 0){
         registers = char_to_int(tokens[1] + sizeof(char));
         value += registers << 7;
     }
@@ -181,7 +181,7 @@ uint32_t handle_other_i_type(char * tokens[]){
 
     
     //rs1
-    if(strcmp(reg, "zero")){
+    if(strcmp(reg, "zero")!=0){
         registers = char_to_int(reg + sizeof(char));
         value += registers << 15;
     }
@@ -220,13 +220,14 @@ uint32_t handle_i_type( char * tokens[]){
     char * rs1 = tokens[2];
     char * imm = tokens[3];
     if(strcmp(name, "addi")) {
+        
 
     }
     else if(strcmp(name, "xori") ==0) {
         value += 4<<12;
     }
     else if(strcmp(name, "ori") ==0 ) {
-        value += 6<<12;;
+        value += 6<<12;
     }
     else if(strcmp(name, "andi")==0) {
         value += 7<<12;
@@ -269,7 +270,7 @@ uint32_t handle_s_type(char * tokens[]){
     uint32_t immediate_mask = 0b11111110000000000000111110000000;
 
     //rs2
-    if(strcmp(tokens[1], "zero")){
+    if(strcmp(tokens[1], "zero")!=0){
         registers = char_to_int(tokens[1] + sizeof(char));
         value += registers << 20;
     }
@@ -285,7 +286,7 @@ uint32_t handle_s_type(char * tokens[]){
 
     
     //rs1
-    if(strcmp(reg, "zero")){
+    if(strcmp(reg, "zero")!=0){
         registers = char_to_int(reg + sizeof(char));
         value += registers << 15;
     }
@@ -331,16 +332,16 @@ uint32_t handle_s_type(char * tokens[]){
 uint32_t handle_b_type(char * tokens[],int i){
     uint32_t value =0;
     uint32_t registers =0;
-    //rs2
-    if(strcmp(tokens[1], "zero")){
+    //rs1
+    if(strcmp(tokens[1], "zero") !=0){
         registers = char_to_int(tokens[1] + sizeof(char));
-        value += registers << 20;
+        value += registers << 15;
     }
     
-    //rs1
-    if(strcmp(tokens[2], "zero")){
+    //rs2
+    if(strcmp(tokens[2], "zero")!=0){
         registers = char_to_int(tokens[2]  + sizeof(char));
-        value += registers << 15;
+        value += registers << 20;
     }
 
 

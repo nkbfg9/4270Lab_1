@@ -697,11 +697,13 @@ void handle_instruction()
 		imm11 = bincmd >> 25 & BIT_MASK_7;
 		imm = (imm11 | imm4);
 		// we're gonna have to make a command to print b commands
-		handle_s_print(bincmd);
+		handle_b_print(bincmd);
 		printf("\n");
 		B_Processing(imm4, funct3, rs1, rs2, imm11);
 		break;
 	case U:
+		printf("U type not implemented\n");
+		break;
 	case J:
 		rd = bincmd >> 7 & BIT_MASK_5;
 		uint32_t imm20 = bincmd >> 12 & 0xffff;
@@ -709,7 +711,9 @@ void handle_instruction()
 		handle_s_print(bincmd);
 		printf("\n");
 		J_Processing(rd, imm20);
+		break;
 	default:
+		printf("\n%u\n",current_type.code);
 		printf("These types of instructions are not implemented\n");
 	}
 }

@@ -12,7 +12,7 @@ char prog_file[32];
 char *prog_tokens[MAX_INSTR][MAX_TOKENS];
 uint32_t prog_instr[MAX_INSTR];
 int num_lines = 0;
-const char *delimeter = " \n,";
+const char *delimeter = " \n,()";
 char *temp;
 
 //covert string to lower case------------------------------------------------------------------------------------------------------------------------------
@@ -26,6 +26,9 @@ void toLowerCase(char *str) {
 
 //takes token and returns an integer[must be null terminating]--------------------------------------------------------------------------------------------
 uint32_t char_to_int(const char * token){
+    if(strcmp(token, "sp") == 0 || strcmp(token, "p") == 0) {
+        return 2;
+    }
     
     uint32_t length = strlen(token);
     uint32_t blah =0;
@@ -162,48 +165,52 @@ uint32_t handle_r_type(char * tokens[]){
 uint32_t handle_other_i_type(char * tokens[]){
     uint32_t value = 0;
     uint32_t registers = 0;
+    char * name = tokens[0];
+    char * rd = tokens[1];
+    char * imm = tokens[2];
+    char * rs1 = tokens[3];
 
     //rd
-    if(strcmp(tokens[1], "zero")){
-        registers = char_to_int(tokens[1] + sizeof(char));
+    if(strcmp(rd, "zero") != 0){
+        registers = char_to_int(rd + sizeof(char));
         value += registers << 7;
     }
 
     //separating rs1 and immediate to get null terminated tokens
-    char * offset_and_register = malloc(sizeof(tokens[2]));
-    strcpy(offset_and_register, tokens[2]);
-    char * offset = NULL;
-    char * reg = NULL;
+    // char * offset_and_register = malloc(sizeof(tokens[2]));
+    // strcpy(offset_and_register, tokens[2]);
+    // char * offset = NULL;
+    // char * reg = NULL;
 
-    offset = strtok(offset_and_register,"()");//immediate
-    reg = strtok(NULL,"())");//rs1
+    // offset = strtok(offset_and_register,"()");//immediate
+    // reg = strtok(NULL,"())");//rs1
 
     
     //rs1
-    if(strcmp(reg, "zero")){
-        registers = char_to_int(reg + sizeof(char));
+    if(strcmp(rs1, "zero")){
+        registers = char_to_int(rs1 + sizeof(char));
         value += registers << 15;
     }
 
     //immediate 
-    registers = char_to_int(offset);
+    registers = char_to_int(imm);
 
     value += (registers << 20);//only 12 bits so dont need to worry about overlap
     
 
     //no mem leak
-    free(offset_and_register);
-    offset = NULL;
-    reg = NULL;
-    offset_and_register = NULL;
+    // free(offset_and_register);
+    // offset = NULL;
+    // reg = NULL;
+    // offset_and_register = NULL;
 
     //func3
-    if(strcmp(tokens[0], "lh")==0) {
+    if(strcmp(name, "lh")==0) {
         value += 0x1000;
     }
-    else if(strcmp(tokens[0], "lb")==0) {
+    else if(strcmp(name, "lb")==0) {
     }
-    else if(strcmp(tokens[0],"lw") ==0){
+    else if(strcmp(name,"lw") ==0){
         value += 0x2000;
     }
 
@@ -218,14 +225,12 @@ uint32_t handle_i_type( char * tokens[]){
     char * rd = tokens[1];
     char * rs1 = tokens[2];
     char * imm = tokens[3];
-    if(strcmp(name, "addi")) {
-
-    }
-    else if(strcmp(name, "xori") ==0) {
+    
+    if(strcmp(name, "xori") ==0) {
         value += 4<<12;
     }
     else if(strcmp(name, "ori") ==0 ) {
-        value += 6<<12;;
+        value += 6<<12;
     }
     else if(strcmp(name, "andi")==0) {
         value += 7<<12;
@@ -246,11 +251,18 @@ uint32_t handle_i_type( char * tokens[]){
     else if(strcmp(name, "sltiu")==0) {
         value += 3 << 12;
     }
+    else if(strcmp(name, "jalr")) {
+        char * temp = malloc(sizeof(char) * strlen(rs1));
+        strcpy(temp, rs1);
+        strcpy(rs1, imm);
+        strcpy(imm, temp);
+        free(temp);
+    }
     
     
 
     if(strcmp(rd, "zero") != 0){
-        value += (char_to_int(rd + sizeof(char)) << 7);
+        value += char_to_int(rd + sizeof(char)) << 7;
     }
     if(strcmp(rs1, "zero") != 0){
         value += char_to_int(rs1 + sizeof(char)) << 15;
@@ -266,48 +278,53 @@ uint32_t handle_s_type(char * tokens[]){
     uint32_t value =0;
     uint32_t registers =0;
     uint32_t immediate_mask = 0b11111110000000000000111110000000;
+    char * name = tokens[0];
+    char * rs1 = tokens[1];
+    char * imm = tokens[2];
+    char * rs2 = tokens[3];
 
     //rs2
-    if(strcmp(tokens[1], "zero")){
-        registers = char_to_int(tokens[1] + sizeof(char));
+    if(strcmp(rs2, "zero") != 0){
+        registers = char_to_int(rs2 + sizeof(char));
         value += registers << 20;
     }
     
     //separating rs1 and immediate to get null terminated tokens
-    char * offset_and_register = malloc(sizeof(tokens[2]));
-    strcpy(offset_and_register, tokens[2]);
-    char * offset = NULL;
-    char * reg = NULL;
+    // printf("sizeof(tokens[2]) is: %ld\nsizeof(char) * strlen(tokens[2]) is: %ld", sizeof(tokens[2]), sizeof(char) * strlen(tokens[2]));
+    // char * offset_and_register = malloc(sizeof(tokens[2]));
+    // strcpy(offset_and_register, tokens[2]);
+    // char * offset = NULL;
+    // char * reg = NULL;
 
-    offset = strtok(offset_and_register,"()");//immediate
-    reg = strtok(NULL,"())");//rs1
+    // offset = strtok(offset_and_register,"()");//immediate
+    // reg = strtok(NULL,"())");//rs1
 
     
     //rs1
-    if(strcmp(reg, "zero")){
-        registers = char_to_int(reg + sizeof(char));
+    if(strcmp(rs1, "zero") != 0){
+        registers = char_to_int(rs1 + sizeof(char));
         value += registers << 15;
     }
 
 
 
     //immediate
-    registers = char_to_int(offset);
+    registers = char_to_int(imm);
 
     value += (immediate_mask & (registers << 7));//only 12 bits so dont need to worry about overlap
     value += (immediate_mask & (registers << 20));//shift 20 to get last 7 bits
 
     //no mem leak
-    free(offset_and_register);
-    offset = NULL;
-    reg = NULL;
-    offset_and_register = NULL;
+    // free(offset_and_register);
+    // offset = NULL;
+    // reg = NULL;
+    // offset_and_register = NULL;
 
 
 
     //funct3 code
     //sw < sh < sb in strcmp
-    int funct3 = strcmp("sh", tokens[0]);
+    int funct3 = strcmp("sh", name);
     if(funct3 == 0){//sh
         registers = 1;
     }
@@ -331,13 +348,13 @@ uint32_t handle_b_type(char * tokens[],int i){
     uint32_t value =0;
     uint32_t registers =0;
     //rs2
-    if(strcmp(tokens[1], "zero")){
+    if(strcmp(tokens[1], "zero") == 0){
         registers = char_to_int(tokens[1] + sizeof(char));
         value += registers << 20;
     }
     
     //rs1
-    if(strcmp(tokens[2], "zero")){
+    if(strcmp(tokens[2], "zero") == 0){
         registers = char_to_int(tokens[2]  + sizeof(char));
         value += registers << 15;
     }

@@ -35,6 +35,7 @@ uint32_t char_to_int(const char * token){
     //printf("token: %s\ninteger: %d\n",token,blah);
     return blah;
 }
+//helllo how are you, i changed one line
 
 //-return -1 for failure, 1 for beq, 2 for bne, 3 for blt, 4 for bge, 5 for bltu, 6 for bgeu
 int determine_branch(char *line[4])

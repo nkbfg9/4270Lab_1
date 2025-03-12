@@ -251,7 +251,7 @@ uint32_t handle_i_type( char * tokens[]){
     else if(strcmp(name, "sltiu")==0) {
         value += 3 << 12;
     }
-    else if(strcmp(name, "jalr")) {
+    else if(strcmp(name, "jalr") == 0) {
         char * temp = malloc(sizeof(char) * strlen(rs1));
         strcpy(temp, rs1);
         strcpy(rs1, imm);
@@ -260,7 +260,7 @@ uint32_t handle_i_type( char * tokens[]){
     }
     
     
-
+    //this is adding the registers if they're not equal to zero
     if(strcmp(rd, "zero") != 0){
         value += char_to_int(rd + sizeof(char)) << 7;
     }
@@ -268,7 +268,7 @@ uint32_t handle_i_type( char * tokens[]){
         value += char_to_int(rs1 + sizeof(char)) << 15;
     }
 
-    
+    //this is adding the value of the immediate
     value += char_to_int(imm) << 20;
     return value;
 }
@@ -279,9 +279,9 @@ uint32_t handle_s_type(char * tokens[]){
     uint32_t registers =0;
     uint32_t immediate_mask = 0b11111110000000000000111110000000;
     char * name = tokens[0];
-    char * rs1 = tokens[1];
+    char * rs2= tokens[1];
     char * imm = tokens[2];
-    char * rs2 = tokens[3];
+    char * rs1= tokens[3];
 
     //rs2
     if(strcmp(rs2, "zero") != 0){
@@ -348,15 +348,15 @@ uint32_t handle_b_type(char * tokens[],int i){
     uint32_t value =0;
     uint32_t registers =0;
     //rs2
-    if(strcmp(tokens[1], "zero") == 0){
+    if(strcmp(tokens[1], "zero") != 0){
         registers = char_to_int(tokens[1] + sizeof(char));
-        value += registers << 20;
+        value += registers << 15;
     }
     
     //rs1
-    if(strcmp(tokens[2], "zero") == 0){
+    if(strcmp(tokens[2], "zero") != 0){
         registers = char_to_int(tokens[2]  + sizeof(char));
-        value += registers << 15;
+        value += registers << 20;
     }
 
 

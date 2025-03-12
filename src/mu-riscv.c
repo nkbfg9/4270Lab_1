@@ -529,8 +529,11 @@ void B_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 {
 	// Recombine immediate
 	uint32_t imm = ((imm7 & 0b1000000) << 6) + ((imm4 & 0b00001 << 11)) + ((imm7 & 0b0111111) << 5) + (imm4 & 0b11110);
+	printf("imm is %d\n", (int32_t) imm);
 	// this pads it with msb
 	(imm & 0x800) ? imm = (imm | 0xfffff800) : imm;
+	printf("imm is %d\n", (int32_t) imm);
+	printf("f3 is %d\n", f3);
 
 	switch (f3)
 	{
@@ -559,6 +562,7 @@ void B_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 		break;
 
 	case 5: // bge
+		printf("register values are %d >= %d\n", (int32_t) NEXT_STATE.REGS[rs1], (int32_t) NEXT_STATE.REGS[rs2]);
 		if ((int32_t)NEXT_STATE.REGS[rs1] >= (int32_t)NEXT_STATE.REGS[rs2])
 		{
 			NEXT_STATE.PC += imm;
@@ -637,6 +641,7 @@ void handle_instruction()
 	OPCODE current_type;
 	current_type.type = get_opcode_type(bincmd);
 	current_type.code = bincmd & BIT_MASK_7;
+	printf("opcode type is %d, code is %d, command is %d, PC is %d\n", current_type.type, current_type.code, bincmd, CURRENT_STATE.PC);
 
 	uint8_t rd;
 	uint8_t funct3;
@@ -697,7 +702,7 @@ void handle_instruction()
 		imm11 = bincmd >> 25 & BIT_MASK_7;
 		imm = (imm11 | imm4);
 		// we're gonna have to make a command to print b commands
-		handle_s_print(bincmd);
+		handle_b_print(bincmd);
 		printf("\n");
 		B_Processing(imm4, funct3, rs1, rs2, imm11);
 		break;
@@ -706,7 +711,7 @@ void handle_instruction()
 		rd = bincmd >> 7 & BIT_MASK_5;
 		uint32_t imm20 = bincmd >> 12 & 0xffff;
 		// we're also gonna need to make a handle_j_print()
-		handle_s_print(bincmd);
+		handle_j_print(bincmd);
 		printf("\n");
 		J_Processing(rd, imm20);
 	default:

@@ -493,7 +493,7 @@ uint32_t getOpcode(char *tokens[], int i)
     else if (strcmp(name, "jalr") == 0)
     {
         value += 0b1100111;
-        return value + handle_i_type(tokens);
+        return value + handle_other_i_type(tokens);
     }
     else
     {

@@ -774,6 +774,7 @@ void print_program()
 			printf("\n");
 			break;
 		default:
+			
 			printf("These types of instructions are not implemented\n");
 		}
 	}

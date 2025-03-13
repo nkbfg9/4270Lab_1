@@ -595,7 +595,7 @@ int main(int argc, char *argv[])
         prog_instr[i] = getOpcode(prog_tokens[i], i);
         printf("instruction %d: %x\n", i, prog_instr[i]);
     }
-    printf("%d\n", label_distance(prog_tokens[48], 48));
+    //printf("%d\n", label_distance(prog_tokens[48], 48));
     /*for(int i=0; i< num_lines;i++){
 
         prog_instr[i] = getOpcode(prog_tokens[i],i);

@@ -480,6 +480,7 @@ void Iimm_Processing(uint32_t rd, uint32_t f3, uint32_t rs1, uint32_t imm)
 			break;
 
 		default:
+			printf("i imm bad\n");
 			RUN_FLAG = FALSE;
 			break;
 		}
@@ -528,9 +529,13 @@ void S_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 void B_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32_t imm7)
 {
 	// Recombine immediate
-	uint32_t imm = ((imm7 & 0b1000000) << 6) + ((imm4 & 0b00001 << 11)) + ((imm7 & 0b0111111) << 5) + (imm4 & 0b11110);
+	uint32_t imm = ((imm7 & 0b1000000) << 6) + ((imm4 & 0b00001) << 11) + ((imm7 & 0b0111111) << 5) + (imm4 & 0b11110);
+	
 	// this pads it with msb
-	(imm & 0x800) ? imm = (imm | 0xfffff800) : imm;
+	if(imm & 0x1000){
+		imm = imm | 0xfffff000;
+	}
+	//(imm & 0x800) ? imm += 0xfffff800 : imm;
 	
 	switch (f3)
 	{
@@ -538,7 +543,7 @@ void B_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 	case 0: // beq
 		if ((int32_t)NEXT_STATE.REGS[rs1] == (int32_t)NEXT_STATE.REGS[rs2])
 		{
-			NEXT_STATE.PC += imm;
+			NEXT_STATE.PC += imm-4;
 			did_branch = 1;
 		}
 		break;
@@ -546,7 +551,7 @@ void B_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 	case 1: // bne
 		if ((int32_t)NEXT_STATE.REGS[rs1] != (int32_t)NEXT_STATE.REGS[rs2])
 		{
-			NEXT_STATE.PC += imm;
+			NEXT_STATE.PC += imm-4;
 			did_branch = 1;
 		}
 		break;
@@ -554,16 +559,15 @@ void B_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 	case 4: // blt
 		if ((int32_t)NEXT_STATE.REGS[rs1] < (int32_t)NEXT_STATE.REGS[rs2])
 		{
-			NEXT_STATE.PC += imm;
+			NEXT_STATE.PC += imm-4;
 			did_branch = 1;
 		}
 		break;
 
 	case 5: // bge
-		printf("register values are %d >= %d\n", (int32_t) NEXT_STATE.REGS[rs1], (int32_t) NEXT_STATE.REGS[rs2]);
 		if ((int32_t)NEXT_STATE.REGS[rs1] >= (int32_t)NEXT_STATE.REGS[rs2])
 		{
-			NEXT_STATE.PC += imm;
+			NEXT_STATE.PC += imm-4;
 			did_branch = 1;
 		}
 		break;
@@ -571,7 +575,7 @@ void B_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 	case 6: // bltu
 		if (NEXT_STATE.REGS[rs1] < NEXT_STATE.REGS[rs2])
 		{
-			NEXT_STATE.PC += imm;
+			NEXT_STATE.PC += imm-4;
 			did_branch = 1;
 		}
 		break;
@@ -579,7 +583,7 @@ void B_Processing(uint32_t imm4, uint32_t f3, uint32_t rs1, uint32_t rs2, uint32
 	case 7: // bgeu
 		if (NEXT_STATE.REGS[rs1] >= NEXT_STATE.REGS[rs2])
 		{
-			NEXT_STATE.PC += imm;
+			NEXT_STATE.PC += imm-4;
 			did_branch = 1;
 		}
 		break;
@@ -600,7 +604,7 @@ void J_Processing(uint32_t rd, uint32_t imm20)
 	(imm & 0x80000) ? imm = (imm | 0xfff80000) : imm;
 
 	NEXT_STATE.REGS[rd] = NEXT_STATE.PC + 4;
-	NEXT_STATE.PC += imm;
+	NEXT_STATE.PC += imm-4;
 	did_branch = 1;
 }
 
@@ -623,18 +627,19 @@ void print_number_as_binary(unsigned int n)
 /************************************************************/
 void handle_instruction()
 {
-
 	// printf("instruction #%d: " , INSTRUCTION_COUNT);
 	if (did_branch == 1)
 	{
 		did_branch = 0;
 	}
-	else
+	
 		NEXT_STATE.PC += 4;
-	if (INSTRUCTION_COUNT >= PROGRAM_SIZE - 1)
+	
+	/*if (INSTRUCTION_COUNT >= PROGRAM_SIZE - 1)
 	{
+		printf("went oob\n");
 		RUN_FLAG = FALSE;
-	}
+	}*/
 
 	uint32_t bincmd = mem_read_32(CURRENT_STATE.PC); // instruction and its opcode
 	OPCODE current_type;
@@ -717,8 +722,6 @@ void handle_instruction()
 		break;
 	default:
 		RUN_FLAG = FALSE;
-		//printf("\n%u\n", current_type.code);
-		//printf("These types of instructions are not implemented\n");
 	}
 }
 /************************************************************/
